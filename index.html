@@ -31,11 +31,11 @@
                                 </div>
                             </div>
 
-                            <!-- Phone Number and Class on the same row -->
+                            <!-- Phone Number -->
                             <div class="row mb-3">
                                 <div class="col-12 col-md">
                                     <label for="phone" class="form-label">Phone Number</label>
-                                    <input type="tel" class="form-control" id="phone" maxlength="9" required>
+                                    <input type="tel" class="form-control" id="phone" maxlength="10" required>
                                     <small class="text-muted">Format: 10 digits without spaces or special
                                         characters</small>
                                 </div>
@@ -58,7 +58,7 @@
 
                             <!-- Submit Button -->
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-primary">Submit</button>
+                                <button type="submit" class="btn btn-primary" id="submitButton">Submit</button>
                             </div>
                         </form>
                     </div>
@@ -68,52 +68,79 @@
     </div>
 
     <script>
-        document.getElementById('studentForm').addEventListener('submit', function (e) {
+        // Phone number input validation
+        document.getElementById('phone').addEventListener('input', function(e) {
+            this.value = this.value.replace(/\D/g, '').substring(0, 10);
+        });
+
+        // Form validation and submission
+        document.getElementById('studentForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            
+            if (!this.checkValidity()) {
+                e.stopPropagation();
+                this.classList.add('was-validated');
+                return;
+            }
+
+            // Disable submit button while processing
+            const submitButton = document.getElementById('submitButton');
+            submitButton.disabled = true;
 
             const formData = {
-                firstName: document.getElementById('firstName').value,
-                lastName: document.getElementById('lastName').value,
-                phone: document.getElementById('phone').value,
+                firstName: document.getElementById('firstName').value.trim(),
+                lastName: document.getElementById('lastName').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
                 gender: document.querySelector('input[name="gender"]:checked').value
             };
 
-            // Replace YOUR_SCRIPT_URL with your Google Apps Script web app URL
-            fetch('https://script.google.com/macros/s/AKfycbxi4aVzSCN8R4u0Jz3vb6fkFuHQbNYdhb7l-zfmMqBpNpDFQZxiKSnjRScseIta0Q4b/exec', {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData)
-            })
-                .then(() => {
-                    // Show success popup with dynamic first name
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Submission Successful',
-                        text: `Thank you, ${formData.firstName}! Your information has been submitted successfully!`,
-                        confirmButtonText: 'OK',
-                    });
+            // Replace with your Google Apps Script Web App URL
+            const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw9Q7KCVbH-MTk2B_koUg9iqtlCFG2_36RU9rWxG2dJhHRtQErVKTTeQ7_T9nyTnbRu/exec';
 
-                    // Reset the form after submission
-                    this.reset();
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred. Please try again.');
+            try {
+                // Show loading state
+                Swal.fire({
+                    title: 'Submitting...',
+                    text: 'Please wait while we process your information.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
                 });
+
+                // Submit to Google Sheets
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                // Close loading state and show success
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Submission Successful',
+                    text: `Thank you, ${formData.firstName}! Your information has been submitted successfully!`,
+                    confirmButtonText: 'OK',
+                }).then(() => {
+                    this.reset();
+                    this.classList.remove('was-validated');
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Submission Failed',
+                    text: 'There was an error submitting your information. Please try again.',
+                    confirmButtonText: 'OK'
+                });
+            } finally {
+                // Re-enable submit button
+                submitButton.disabled = false;
+            }
         });
-
-
-        fetch('https://script.google.com/macros/s/AKfycbxi4aVzSCN8R4u0Jz3vb6fkFuHQbNYdhb7l-zfmMqBpNpDFQZxiKSnjRScseIta0Q4b')
-            .then(response => response.json())
-            .then(data => {
-                console.log(data); // Logs the JSON data from the Google Sheet
-                // Use the data as needed
-            })
-            .catch(error => console.error('Error:', error));
-
     </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
